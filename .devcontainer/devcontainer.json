@@ -1,0 +1,38 @@
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "continue.continue",
+        "esbenp.prettier-vscode",
+        "ethan-reesor.exp-vscode-go",
+        "golang.go",
+        "rohit-gohri.format-code-action"
+      ],
+      "settings": {
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "editor.codeActionsOnSave": [
+          "source.organizeImports",
+          "source.formatDocument"
+        ],
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "exp-vscode-go.testExplorer.enable": true
+      }
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.25.5"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22.21.0"
+    }
+  },
+  "image": "ubuntu:latest",
+  "postCreateCommand": ".devcontainer/post-create.sh",
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.continue,target=/root/.continue,type=bind,consistency=cached"
+  ]
+}

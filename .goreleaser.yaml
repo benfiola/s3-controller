@@ -1,0 +1,31 @@
+version: 2
+
+project_name: s3-controller
+
+builds:
+  - id: s3-controller
+    goos:
+      - linux
+    goarch:
+      - arm64
+      - amd64
+    ldflags:
+      - "-X {{ .ModulePath }}/internal/info.Version={{ .Version }}"
+    main: ./cmd/s3-controller
+
+dockers_v2:
+  - dockerfile: .goreleaser.Dockerfile
+    images:
+      - ghcr.io/benfiola/{{ .ProjectName }}
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    tags:
+      - "{{.Version}}"
+
+release:
+  footer: |
+    **Docker Image:** `ghcr.io/benfiola/s3-controller:{{ .Version }}`
+
+changelog:
+  use: github-native

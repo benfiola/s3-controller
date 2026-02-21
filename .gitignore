@@ -1,0 +1,4 @@
+.bin
+.dist
+.vscode/launch.json
+charts/s3-controller/generated/**

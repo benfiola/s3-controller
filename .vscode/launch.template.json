@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "s3-controller",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/s3-controller/main.go",
+      "cwd": "${workspaceFolder}",
+      "args": []
+    }
+  ]
+}

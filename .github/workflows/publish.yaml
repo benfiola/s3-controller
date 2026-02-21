@@ -1,0 +1,179 @@
+name: publish
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - exp/init
+
+jobs:
+  create-tag:
+    concurrency:
+      group: ${{github.workflow}}-create-tag
+    outputs:
+      version: ${{ steps.version.outputs.is_main }}
+      version: ${{ steps.version.outputs.version }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: configure git environment
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+      - name: install tools
+        run: |
+          sudo BIN=/usr/local/bin make install-tools
+      - name: determine version
+        id: version
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          BRANCH_NAME="$(echo "${BRANCH_NAME}" | sed 's/[^a-zA-Z0-9.-]/-/g')"
+          IS_MAIN="NO"
+          if [[ "${BRANCH_NAME}" == "dev" ]]; then
+            VERSION="$(svu next --prerelease "rc.${GITHUB_RUN_NUMBER}")"
+          elif [[ "${BRANCH_NAME}" == "main" ]]; then
+            IS_MAIN="YES"
+            VERSION="$(svu next)"
+          else
+            VERSION="$(svu next --prerelease "alpha.${GITHUB_RUN_NUMBER}" --metadata "${BRANCH_NAME}")"
+          fi
+          echo "is_main==${IS_MAIN}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+      - name: create git tag
+        run: |
+          git tag "${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}"
+
+  publish-docker:
+    needs: create-tag
+    permissions:
+      contents: write
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+      - name: set up qemu
+        uses: docker/setup-qemu-action@v3
+      - name: set up docker buildx
+        uses: docker/setup-buildx-action@v3
+      - name: set up go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.25.5"
+      - name: log in to github container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: install tools
+        run: |
+          sudo BIN=/usr/local/bin make install-tools
+      - name: generate content
+        run: |
+          make generate
+          git diff --exit-code
+      - name: run goreleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          version: "2.12.7"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-helm:
+    needs: create-tag
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: configure git environment
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+      - name: install tools
+        run: |
+          sudo BIN=/usr/local/bin make install-tools
+      - name: generate content
+        run: |
+          make generate
+          git diff --exit-code
+      - name: build helm charts
+        run: |
+          DIST=dist VERSION="${{ needs.create-tag.outputs.version }}" make build-charts
+      - name: update release with helm chart
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            ./dist/*.tgz
+          tag_name: "${{ needs.create-tag.outputs.version }}"
+      - name: build helm index
+        run: |
+          owner=$(echo "${{ github.repository }}" | cut -d'/' -f1)
+          git_repo=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          cr index --git-repo "${git_repo}" --index-path dist/index.yaml --owner "${owner}" --package-path dist --release-name-template '{{ .Version }}'
+      - name: upload helm index
+        uses: actions/upload-artifact@v6
+        with:
+          name: helm-index
+          path: dist/index.yaml
+          if-no-files-found: error
+          retention-days: 1
+
+  build-docs:
+    needs: [create-tag, publish-helm]
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.is_main == 'YES'
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.21.0"
+      - name: download helm index
+        uses: actions/download-artifact@v6
+        with:
+          name: helm-index
+          path: github-artifacts/helm-index
+      - name: build docs
+        run: |
+          mv github-artifacts/helm-index/index.yaml docs/static/index.yaml
+          DIST=dist make build-docs
+      - name: upload docs
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publish-docs:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.is_main == 'YES'
+    permissions:
+      id-token: write
+      pages: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: deploy docs
+        id: deployment
+        uses: actions/deploy-pages@v4
