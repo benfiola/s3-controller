@@ -37,6 +37,8 @@ build-chart:
 	rm -rf $(dist)/s3-controller-*.tgz
 	# package chart s3-controller
 	helm package $(project)/charts/s3-controller --app-version $(VERSION) --destination $(dist) --version $(VERSION)
+	# rename chart to include 'helm'
+	mv $(dist)/s3-controller-$(VERSION).tgz $(dist)/s3-controller-helm-$(VERSION).tgz
 
 .PHONY: build-docs
 build-docs: install-docs
