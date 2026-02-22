@@ -5,14 +5,14 @@ on:
     branches:
       - main
       - dev
-      - exp/init
+      - eng/init
 
 jobs:
   create-tag:
     concurrency:
       group: ${{github.workflow}}-create-tag
     outputs:
-      version: ${{ steps.version.outputs.is_main }}
+      is_main: ${{ steps.version.outputs.is_main }}
       version: ${{ steps.version.outputs.version }}
     permissions:
       contents: write
