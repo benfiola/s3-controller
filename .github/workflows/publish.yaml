@@ -38,9 +38,9 @@ jobs:
           IS_MAIN="NO"
           if [[ "${BRANCH_NAME}" == "main" ]]; then
             IS_MAIN="YES"
-            VERSION="$(svu next)"
+            VERSION="$(svu next --always)"
           else
-            VERSION="$(svu next --prerelease "${BRANCH_NAME}.${GITHUB_RUN_NUMBER}")"
+            VERSION="$(svu next --always --prerelease "${BRANCH_NAME}.${GITHUB_RUN_NUMBER}")"
           fi
           echo "is_main=${IS_MAIN}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
