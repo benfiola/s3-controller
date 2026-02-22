@@ -21,11 +21,11 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
     tags:
-      - "{{ .Version | replace '+' '-' }}"
+      - "{{ .Version }}"
 
 release:
   footer: |
-    **Docker Image:** `ghcr.io/benfiola/s3-controller:{{ .Version | replace '+' '-' }}`
+    **Docker Image:** `ghcr.io/benfiola/s3-controller:{{ .Version }}`
 
 changelog:
   use: github-native

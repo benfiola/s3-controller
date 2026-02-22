@@ -34,15 +34,13 @@ jobs:
         id: version
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          BRANCH_NAME="$(echo "${BRANCH_NAME}" | sed 's/[^a-zA-Z0-9.-]/-/g')"
+          BRANCH_NAME="$(echo "${BRANCH_NAME}" | sed 's/[^a-zA-Z0-9.]/./g')"
           IS_MAIN="NO"
-          if [[ "${BRANCH_NAME}" == "dev" ]]; then
-            VERSION="$(svu next --prerelease "rc.${GITHUB_RUN_NUMBER}")"
-          elif [[ "${BRANCH_NAME}" == "main" ]]; then
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
             IS_MAIN="YES"
             VERSION="$(svu next)"
           else
-            VERSION="$(svu next --prerelease "alpha.${GITHUB_RUN_NUMBER}" --metadata "${BRANCH_NAME}")"
+            VERSION="$(svu next --prerelease "${BRANCH_NAME}.${GITHUB_RUN_NUMBER}")"
           fi
           echo "is_main=${IS_MAIN}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
@@ -116,9 +114,7 @@ jobs:
           git diff --exit-code
       - name: build helm charts
         run: |
-          SANITIZED_VERSION="${{ needs.create-tag.outputs.version }}"
-          SANITIZED_VERSION="${SANITIZED_VERSION//+/_}"
-          DIST=dist VERSION="${SANITIZED_VERSION}" make build-chart
+          DIST=dist VERSION="${{ needs.create-tag.outputs.version }}" make build-chart
       - name: update release with helm chart
         uses: softprops/action-gh-release@v2
         with:
