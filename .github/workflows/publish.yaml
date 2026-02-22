@@ -115,7 +115,7 @@ jobs:
           git diff --exit-code
       - name: build helm charts
         run: |
-          DIST=dist VERSION="${{ needs.create-tag.outputs.version }}" make build-charts
+          DIST=dist VERSION="${{ needs.create-tag.outputs.version }}" make build-chart
       - name: update release with helm chart
         uses: softprops/action-gh-release@v2
         with:
